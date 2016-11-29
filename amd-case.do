@@ -47,7 +47,23 @@ label var proactivity3 "On my own, I change the way I do my job to make it easie
 label var proactivity "Proactivity"
 label var conversation "Compared to previous conversations, rate the quality of the  performance conversation with your manager."
 
+save data/amd-case-data.dta, replace
 
+drop if performance==""
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+bysort performance: ttest `var', by (pilot)
+}
+
+clear
+
+use data/amd-case-data.dta
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+bysort employeeor: ttest `var', by (pilot)
+}
 
 stop
 
