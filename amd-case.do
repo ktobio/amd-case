@@ -47,6 +47,12 @@ label var proactivity3 "On my own, I change the way I do my job to make it easie
 label var proactivity "Mean of Proactivity1-Proactivity3"
 label var conversation "Compared to previous conversations, rate the quality of the  performance conversation with your manager."
 
+g pilotdum=0
+replace pilotdum=1 if pilot=="Pilot Group"
+
+g managerdum=0
+replace managerdum=1 if employeeor=="Manager"
+
 save data/amd-case-data.dta, replace
 
 /***************
@@ -72,6 +78,13 @@ clear
 /*******************************
 Replication of EB's calculations
 *******************************/
+
+use data/amd-case-data.dta
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+ttest `var', by (pilot)
+}
 
 use data/amd-case-data.dta
 
@@ -134,12 +147,6 @@ clear
 
 use data/amd-case-data.dta
 
-g pilotdum=0
-replace pilotdum=1 if pilot=="Pilot Group"
-
-g managerdum=0
-replace managerdum=1 if employeeor=="Manager"
-
 g interact=managerdum*pilotdum
 
 anova conversation pilotdum managerdum interact
@@ -155,11 +162,23 @@ g interact=pilotdum*performdum
 anova conversation pilotdum performdum interact if performance~=""
 regress conversation pilotdum performdum interact  if performance~=""
 
-drop interact
+clear
+
+use data/amd-case-data.dta
 
 g interact=pilotdum*tenure
 
-anova feedback pilotdum tenure interact if performance~=""
-regress feedback pilotdum tenure interact  if performance~=""
+anova conversation pilotdum tenure interact if tenure~=.
+regress conversation pilotdum tenure  if tenure~=.
+regress conversation pilotdum tenure interact  if tenure~=.
 
+clear
+
+use data/amd-case-data.dta
+
+g interact=pilotdum*joblevel
+
+anova conversation pilotdum tenure interact if joblevel~=.
+regress conversation pilotdum tenure  if joblevel~=.
+regress conversation pilotdum tenure interact  if joblevel~=.
 
