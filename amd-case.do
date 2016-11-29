@@ -21,33 +21,59 @@ label var feedback5 "My performance was compared to others in the organization."
 label var feedback6 "How I achieve my results (AMD Way behaviors) was part the conversation I had with my manager."
 label var feedback7 "I had a conversation about how to achieve my career goals and aspirations"
 label var feedback8 "I had a conversation with my manager about what matters most to me in my overall experience at AMD."
-label var feedback "Feedback"
-label var fairness1 "I understand how my performance influenced my rewards."
-label var fairness2 "There is a clear link between performance & compensation at AMD."
-label var fairness3 "Link b/n perf and rewards"
-label var fairness4 "How fair are the following?-The steps involved in determining my pay"
-label var fairness5 "How fair are the following?-Overall, the procedures used in determining my pay"
-label var fairness "Fairness"
+label var feedback "Mean of Feedback1-Feedback8"
+label var link1 "I understand how my performance influenced my rewards."
+label var link2 "There is a clear link between performance & compensation at AMD."
+label var link "Mean of Link1 and Link2 - Link b/n perf and rewards"
+label var fairness1 "How fair are the following?-The steps involved in determining my pay"
+label var fairness2 "How fair are the following?-Overall, the procedures used in determining my pay"
+label var fairness "Mean of Fairness1 and Fairness2"
 label var engagement1 "I am enthusiastic about my job."
 label var engagement2 "I am proud of the work that I do."
 label var engagement3 "To me, my job is challenging."
-label var engagement "Engagement"
+label var engagement "Mean of Engagement1-Engagement3"
 label var manager1 "Please answer the following questions about your manager-My manager takes an active interest in my growth and development."
 label var manager2 "Please answer the following questions about your manager-My manager asks me personally to tell him/her about things that I think would be helpful for improving our team/organization."
 label var manager3 "Please answer the following questions about your manager-My manager seeks me out for my expertise."
 label var manager4 "Please answer the following questions about your manager-My manager provides positive feedback when the team behaves or performs well."
-label var manager "My manager"
+label var manager "Mean of Manager1-Manager4"
 label var safety1 "Please indicate your agreement with the following questions.-It is safe for me to speak up around here."
 label var safety2 "Please indicate your agreement with the following questions.-It is safe for me to give my honest opinion to my manager."
 label var safety3 "Please indicate your agreement with the following questions.-It is safe for me to make suggestions to my manager."
-label var safety "Safety"
+label var safety "Mean of Safety1-Safety3"
 label var proactivity1 "I introduce new approaches on my own to improve my work."
 label var proactivity2 "I change minor work procedures that I think are not productive on my own."
 label var proactivity3 "On my own, I change the way I do my job to make it easier on myself."
-label var proactivity "Proactivity"
+label var proactivity "Mean of Proactivity1-Proactivity3"
 label var conversation "Compared to previous conversations, rate the quality of the  performance conversation with your manager."
 
 save data/amd-case-data.dta, replace
+
+/***************
+CHECK
+***************/
+g check=(link1+link2)/2
+count
+count if link==check
+replace check=link1 if link1~=. & link2==.
+replace check=link2 if link2~=. & link1==.
+count if link==check
+drop check
+
+g check=(fairness1+fairness2)/2
+count
+count if fairness==check
+replace check=fairness1 if fairness1~=. & fairness2==.
+replace check=fairness2 if fairness2~=. & fairness1==.
+count if fairness==check
+drop check
+clear
+
+/*******************************
+Replication of EB's calculations
+*******************************/
+
+use data/amd-case-data.dta
 
 drop if performance==""
 
@@ -60,12 +86,53 @@ clear
 
 use data/amd-case-data.dta
 
+drop if location==""
+drop if location=="Argentina" | location=="Brazil"
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+bysort location: ttest `var', by (pilot)
+}
+
+clear
+
+use data/amd-case-data.dta
+
+/*Business unit of Tech and Eng only one with participants in both programs*/
+
+keep if business=="Tech & Eng"
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+bysort business: ttest `var', by (pilot)
+}
+
+clear
+
+use data/amd-case-data.dta
+
+drop if joblevel==.
+drop if joblevel==13
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+d `var'
+bysort joblevel: ttest `var', by (pilot)
+}
+
+clear
+
+use data/amd-case-data.dta
+
+drop if employeeor==""
+
 foreach var in feedback fairness engagement manager safety proactivity conversation {
 d `var'
 bysort employeeor: ttest `var', by (pilot)
 }
 
-stop
+clear
+
+use data/amd-case-data.dta
 
 g pilotdum=0
 replace pilotdum=1 if pilot=="Pilot Group"
@@ -88,15 +155,11 @@ g interact=pilotdum*performdum
 anova conversation pilotdum performdum interact if performance~=""
 regress conversation pilotdum performdum interact  if performance~=""
 
-drop interact pilotdum
-g pilotdum=1
-replace pilotdum=0 if pilot=="Pilot Group"
-replace pilotdum=. if pilot==""
+drop interact
 
-replace performdum=. if performance==""
+g interact=pilotdum*tenure
 
-g interact=pilotdum*performdum
+anova feedback pilotdum tenure interact if performance~=""
+regress feedback pilotdum tenure interact  if performance~=""
 
-anova conversation pilotdum performdum interact 
-regress conversation pilotdum performdum interact  
 
