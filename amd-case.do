@@ -53,6 +53,9 @@ replace pilotdum=1 if pilot=="Pilot Group"
 g managerdum=0
 replace managerdum=1 if employeeor=="Manager"
 
+g performdum=0
+replace performdum=1 if performance=="Exceptional"
+
 save data/amd-case-data.dta, replace
 
 /***************
@@ -152,10 +155,9 @@ g interact=managerdum*pilotdum
 anova conversation pilotdum managerdum interact
 regress conversation pilotdum managerdum interact
 
-g performdum=0
-replace performdum=1 if performance=="Exceptional"
+clear
 
-drop interact
+use data/amd-case-data.dta
 
 g interact=pilotdum*performdum
 
