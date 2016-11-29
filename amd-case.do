@@ -49,12 +49,17 @@ label var conversation "Compared to previous conversations, rate the quality of 
 
 g pilotdum=0
 replace pilotdum=1 if pilot=="Pilot Group"
+replace pilotdum=. if pilot==""
 
 g managerdum=0
 replace managerdum=1 if employeeor=="Manager"
+replace managerdum=. if employeeor==""
 
 g performdum=0
 replace performdum=1 if performance=="Exceptional"
+replace performdum=. if performance==""
+
+tab location, gen(locationdum)
 
 save data/amd-case-data.dta, replace
 
@@ -153,6 +158,7 @@ use data/amd-case-data.dta
 g interact=managerdum*pilotdum
 
 anova conversation pilotdum managerdum interact
+regress conversation pilotdum managerdum
 regress conversation pilotdum managerdum interact
 
 clear
@@ -162,6 +168,7 @@ use data/amd-case-data.dta
 g interact=pilotdum*performdum
 
 anova conversation pilotdum performdum interact if performance~=""
+regress conversation pilotdum performdum if performance~=""
 regress conversation pilotdum performdum interact  if performance~=""
 
 clear
@@ -183,4 +190,12 @@ g interact=pilotdum*joblevel
 anova conversation pilotdum tenure interact if joblevel~=.
 regress conversation pilotdum tenure  if joblevel~=.
 regress conversation pilotdum tenure interact  if joblevel~=.
+
+clear
+
+use data/amd-case-data.dta
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+regress `var' pilotdum locationdum*
+}
 
