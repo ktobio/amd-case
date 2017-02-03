@@ -2,7 +2,7 @@ clear
 capture log close
 set more off
 
-insheet using data/amd-case-data.csv, names
+use data/amd-case-data-revised.dta
 log using logs/amd-case-log, replace
 
 label var employeeid "Employee ID"
@@ -47,54 +47,10 @@ label var proactivity3 "On my own, I change the way I do my job to make it easie
 label var proactivity "Mean of Proactivity1-Proactivity3"
 label var conversation "Compared to previous conversations, rate the quality of the  performance conversation with your manager."
 
-g pilotdum=0
-replace pilotdum=1 if pilot=="Pilot Group"
-replace pilotdum=. if pilot==""
-
-g managerdum=0
-replace managerdum=1 if employeeor=="Manager"
-replace managerdum=. if employeeor==""
-
-g performdum=0
-replace performdum=1 if performance=="Exceptional"
-replace performdum=. if performance==""
-
-tab location, gen(locationdum)
-
-save data/amd-case-data.dta, replace
-
-/***************
-CHECK
-***************/
-g check=(link1+link2)/2
-count
-count if link==check
-replace check=link1 if link1~=. & link2==.
-replace check=link2 if link2~=. & link1==.
-count if link==check
-drop check
-
-g check=(fairness1+fairness2)/2
-count
-count if fairness==check
-replace check=fairness1 if fairness1~=. & fairness2==.
-replace check=fairness2 if fairness2~=. & fairness1==.
-count if fairness==check
-drop check
-clear
-
-/*******************************
-Replication of EB's calculations
-*******************************/
-
-use data/amd-case-data.dta
-
 foreach var in feedback fairness engagement manager safety proactivity conversation {
 d `var'
 ttest `var', by (pilot)
 }
-
-use data/amd-case-data.dta
 
 drop if performance==""
 
@@ -117,7 +73,7 @@ bysort location: ttest `var', by (pilot)
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 /*Business unit of Tech and Eng only one with participants in both programs*/
 
@@ -130,10 +86,10 @@ bysort business: ttest `var', by (pilot)
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 drop if joblevel==.
-drop if joblevel==13
+drop if joblevel==13 | joblevel==11 | joblevel==2
 
 foreach var in feedback fairness engagement manager safety proactivity conversation {
 d `var'
@@ -142,7 +98,7 @@ bysort joblevel: ttest `var', by (pilot)
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 drop if employeeor==""
 
@@ -153,7 +109,7 @@ bysort employeeor: ttest `var', by (pilot)
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 g interact=managerdum*pilotdum
 
@@ -173,7 +129,7 @@ regress conversation pilotdum performdum interact  if performance~=""
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 g interact=pilotdum*tenure
 
@@ -193,7 +149,7 @@ regress conversation pilotdum tenure interact  if joblevel~=.
 
 clear
 
-use data/amd-case-data.dta
+use data/amd-case-data-revised.dta
 
 foreach var in feedback fairness engagement manager safety proactivity conversation {
 regress `var' pilotdum locationdum*
