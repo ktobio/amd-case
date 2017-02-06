@@ -62,9 +62,7 @@ tab location, gen(locationdum)
 
 save data/amd-case-data.dta, replace
 
-
-
-// Want about 60 to be low
+// Want about 60 of the observations to be low
 // Choose with similar level of satisfaction as Strong
 // Goal is to ID variables with low on all the outcomes for control, high on all the outcomes for pilot
 // taking the means of each variable for missing performance level, and handpicking highs and lows
@@ -95,8 +93,28 @@ tab high_
 tab low_
 
 replace performance="Low" if high_pilot==1 | low_control==1
+// we will use the odd indicator to make our adjustments less systematic
+gen odd=mod(employeeid, 2)
+
+tab performance, missing
+drop if performance==""
+stop
+
+// making the forced percentages correct
+gsort -low_
+order low
+replace performance="Exceptional" if _n<=7
+replace performance="Strong" if _n==8 | _n==9 | _n==10
+tab performance
+
+
+
 drop high_ low_
 
+
+tab performance, missing
+stop
+drop performdum
 drop if performance==""
 log using "logs/amd-case-data-massage-log", replace
 foreach var in feedback fairness engagement manager safety proactivity conversation link {
@@ -104,8 +122,6 @@ d `var'
 bysort performance: ttest `var', by (pilot)
 }
 
-// we will use the odd indicator to make our adjustments less systematic
-gen odd=mod(employeeid, 2)
 
 // feedback
 // For feedback, have to add by .125 because if you add 1 to one of the components it gets divded by 8
@@ -114,11 +130,15 @@ replace feedback=feedback-.25 if pilotdum==0 & performance=="Exceptional" & odd=
 bysort performance: ttest feedback, by (pilotd)
 // distribute
 forvalues x=1/8 {
-replace feedback`x'=feedback`x'+2 if pilotdum==1 & performance=="Exceptional" & odd==1 & (feedback`x'+2<=7)
+*replace feedback`x'=feedback`x'+2 if pilotdum==1 & performance=="Exceptional" & odd==1 & (feedback`x'+2<=7)
 replace feedback`x'=feedback`x'+1 if pilotdum==1 & performance=="Exceptional" & odd==1 & (feedback`x'+1<=7)
-}
-forvalues x=1/8 {
-replace feedback`x'=feedback`x'-1 if pilotdum==0 & performance=="Exceptional" & odd==1 & (feedback`x'>=1)
+replace feedback`x'=feedback`x'+1 if pilotdum==1 & performance=="Exceptional" & odd==1 & (feedback`x'+1<=7)
+replace feedback`x'=feedback`x'+1 if pilotdum==1 & performance=="Exceptional" & odd==1 & (feedback`x'+1<=7)
+replace feedback`x'=feedback`x'+2 if pilotdum==1 & performance=="Strong" & odd==1 & (feedback`x'+2<=7)
+replace feedback`x'=feedback`x'+1 if pilotdum==1 & performance=="Strong" & odd==1 & (feedback`x'+1<=7)
+replace feedback`x'=feedback`x'+2 if pilotdum==0 & performance=="Low" & odd==1 & (feedback`x'+2<=7)
+*replace feedback`x'=feedback`x'-1 if pilotdum==0 & performance=="Exceptional" & odd==1 & (feedback`x'>=1)
+list feedback`x' if feedback`x'<1 | feedback`x'>7
 }
 
 egen test=rmean(feedback1 feedback2 feedback3 feedback4 feedback5 feedback6 feedback7 feedback8)
@@ -129,9 +149,7 @@ drop feedback
 rename test feedback
 
 bysort performance: ttest feedback, by (pilotd)
-
- 
- // engagement - .33 because three components
+  // engagement - .33 because three components
 replace engagement=engagement+2 if pilotdum==0 & performance=="Exceptional" & odd==0 & (engagement+2<=7) 
 replace engagement=engagement-.66 if pilotdum==1 & performance=="Exceptional" & odd==0 & (engagement>=1.66) 
 bysort performance: ttest engagement, by (pilotd)
@@ -139,10 +157,8 @@ bysort performance: ttest engagement, by (pilotd)
 forvalues x=1/3 {
 replace engagement`x'=engagement`x'+2 if pilotdum==0 & performance=="Exceptional" & odd==0 & (engagement`x'+2<=7)
 replace engagement`x'=engagement`x'+1 if pilotdum==0 & performance=="Exceptional" & odd==0 & (engagement`x'+1<=7)
-}
-
-forvalues x=1/3 {
 replace engagement`x'=engagement`x'-1 if pilotdum==1 & performance=="Exceptional" & odd==0 & (engagement>=2) 
+list engagement`x' if engagement`x'<1 | engagement`x'>7
 }
 
 egen test=rmean(engagement1 engagement2 engagement3)
@@ -156,20 +172,84 @@ replace manager=manager+.75 if pilotdum==1 & performance=="Exceptional" & odd==0
 replace manager=manager+.25 if pilotdum==1 & performance=="Strong" & odd==0 &  (manager+.25<=7)
 bysort performance: ttest manager, by (pilotd)
 
-//START HERE
+forvalues x=1/4 {
+replace manager`x'=manager`x'+1 if pilotdum==1 & performance=="Exceptional" & odd==0 & (manager`x'+1<=7)
+replace manager`x'=manager`x'+1 if pilotdum==1 & performance=="Strong" & odd==0 & (manager`x'+1<=7)
+list manager`x' if manager`x'<1 | manager`x'>7
+}
+
+egen test=rmean(manager1 manager2 manager3 manager4)
+count if test~=manager
+drop manager
+rename test manager
+bysort performance: ttest manager, by (pilotd)
+
 
 // proactivity - .33
-replace proactivity=proactivity+2 if pilotdum==0 & performance=="Low" & odd==0 & (manager+2<=7)
-replace proactivity=proactivity-2 if pilotdum==1 & performance=="Low" & odd==0 & (manager-2>=1)
+replace proactivity=proactivity+2 if pilotdum==0 & performance=="Low" & odd==0 & (proactivity+2<=5)
+replace proactivity=proactivity-2 if pilotdum==1 & performance=="Low" & odd==0 & (proactivity-2>=2)
 bysort performance: ttest proactivity, by (pilotd)
 
+forvalues x=1/3 {
+replace proactivity`x'=proactivity`x'-1 if pilotdum==1 & performance=="Low" & odd==0 & (proactivity`x'-1>=1)
+replace proactivity`x'=proactivity`x'+1 if pilotdum==0 & performance=="Low" & odd==0 & (proactivity`x'+1<=7)
+replace proactivity`x'=proactivity`x'+2 if pilotdum==0 & performance=="Low" & odd==0 & (proactivity`x'+2<=7)
+replace proactivity`x'=proactivity`x'+2 if pilotdum==0 & performance=="Exceptional" & odd==0 & (proactivity`x'+2<=7)
+list proactivity`x' if proactivity`x'<1 | proactivity`x'>7
+*replace proactivity`x'=proactivity`x'+1 if pilotdum==0 & performance=="Low" & odd==0 & (proactivity`x'+1<=7)
+}
+
+egen test=rmean(proactivity1 proactivity2 proactivity3)
+count if test~=proactivity
+drop proactivity
+rename test proactivity
+bysort performance: ttest proactivity, by (pilotd)
 
 //link .5
 *replace link=link+2 if pilotdum==0 & performance=="Exceptional" & odd==0 & link<=5
 *replace link=link-1 if pilotdum==1 & performance=="Exceptional" & odd==0 & link>=2
 replace link=link+2 if pilotdum==0  & odd==0 & link<=5
 replace link=link-1 if pilotdum==1  & odd==0 & link>=2
-
 bysort performance: ttest link, by (pilotd)
+
+forvalues x=1/2 {
+replace link`x'=link`x'-1 if pilotdum==1 & performance=="Low" & odd==0 & (link`x'-1>=1)
+replace link`x'=link`x'+2 if pilotdum==1 & performance=="Strong" & odd==0 & (link`x'+2<=7)
+replace link`x'=link`x'+1 if pilotdum==1 & performance=="Strong" & odd==0 & (link`x'+1<=7)
+replace link`x'=link`x'+1 if pilotdum==0 & performance=="Exceptional" & odd==0 & (link`x'+1<=7)
+replace link`x'=link`x'+2 if pilotdum==0 & performance=="Exceptional" & odd==0 & (link`x'+2<=7)
+list link`x' if link`x'<1 | link`x'>7
+*replace link`x'=link`x'+1 if pilotdum==0 & performance=="Low" & odd==0 & (link`x'+1<=7)
+}
+
+egen test=rmean(link1 link2)
+count if test~=link
+drop link
+rename test link
+bysort performance: ttest link, by (pilotd)
+
+// conversation
+replace conversation=conversation+1 if performance=="Strong" & pilotdum==1 & odd==1 & conversation+1<=9
+replace conversation=conversation+1 if performance=="Low" & pilotdum==0 & odd==1 & conversation+1<=9
+replace conversation=conversation+1 if performance=="Exceptional" & pilotdum==1 & odd==1 & conversation+1<=9
+replace conversation=conversation+1 if performance=="Exceptional" & pilotdum==1 & odd==1 & conversation+1<=9
+replace conversation=conversation+1 if performance=="Exceptional" & pilotdum==1 & odd==0 & conversation+1<=9
+replace conversation=conversation-1 if performance=="Exceptional" & pilotdum==0 & odd==1 & conversation-1>=1
+replace conversation=conversation-1 if performance=="Exceptional" & pilotdum==0 & odd==1 & conversation-1>=1
+bysort performance: ttest conversation, by (pilotd)
+sum conversation
+
+g performnum=1 if performance=="Low"
+replace performnum=2 if performance=="Strong"
+replace performnum=3 if performance=="Exceptional"
+
+replace performance="1 - Low" if performance=="Low"
+replace performance="2 - Strong" if performance=="Strong"
+replace performance="3 - Exceptional" if performance=="Exceptional"
+
+tab business, gen(bdum)
+tab performnum, gen(pdum)
+
+
 
 save data/amd-case-data-revised.dta, replace

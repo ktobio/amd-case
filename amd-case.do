@@ -3,7 +3,6 @@ capture log close
 set more off
 
 use data/amd-case-data-revised.dta
-log using logs/amd-case-log, replace
 
 label var employeeid "Employee ID"
 label var pilot "Pilot"
@@ -47,31 +46,59 @@ label var proactivity3 "On my own, I change the way I do my job to make it easie
 label var proactivity "Mean of Proactivity1-Proactivity3"
 label var conversation "Compared to previous conversations, rate the quality of the  performance conversation with your manager."
 
-foreach var in feedback fairness engagement manager safety proactivity conversation {
+
+log using logs/amd-case-log, replace
+
+
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
 d `var'
 ttest `var', by (pilot)
 }
 
 drop if performance==""
 
-foreach var in feedback fairness engagement manager safety proactivity conversation {
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
 d `var'
 bysort performance: ttest `var', by (pilot)
 }
 
 clear
+stop
 
 use data/amd-case-data.dta
 
 drop if location==""
 drop if location=="Argentina" | location=="Brazil"
 
-foreach var in feedback fairness engagement manager safety proactivity conversation {
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
 d `var'
 bysort location: ttest `var', by (pilot)
 }
 
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
+regress `var' pilotdum locationdum* bdum* tenure
+}
+
+
+
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
+regress `var' pilotdum locationdum* bdum*  tenure i.performnum
+}
+
+
+
+
+forvalues x=1/3 {
+use data/amd-case-data-revised.dta
+keep if performnum==`x'
+tab performnum
+foreach var in feedback fairness engagement manager safety proactivity link conversation {
+regress `var' pilotdum locationdum* bdum* tenure
+}
 clear
+}
+
+
 
 use data/amd-case-data-revised.dta
 
@@ -153,5 +180,21 @@ use data/amd-case-data-revised.dta
 
 foreach var in feedback fairness engagement manager safety proactivity conversation {
 regress `var' pilotdum locationdum*
+}
+
+tab performance, gen(pdum)
+tab joblevel, gen(jobdum)
+
+
+g pilotinter1=pdum1*pilotdum
+g pilotinter2=pdum2*pilotdum
+g pilotinter3=pdum3*pilotdum
+
+foreach var in feedback fairness engagement manager safety proactivity conversation {
+*regress `var' tenure
+*regress `var' locationdum*
+*regress `var' jobdum*
+*regress `var' pilotdum locationdum* pdum* jobdum* pilotinter* tenure
+regress `var' pilotdum locationdum* jobdum* tenure
 }
 
